@@ -71,6 +71,15 @@ Object.keys(db).forEach((modelName) => {
   }
 });
 
+db.Item.hasMany(db.ItemData, {
+  foreignKey: "item_id",
+  as: "item_data",
+});
+db.ItemData.belongsTo(db.Item, {
+  foreignKey: "item_id",
+  as: "item",
+});
+
 // 5. ส่งออกระบบไปใช้ร่วมกัน
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

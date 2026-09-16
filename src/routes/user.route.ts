@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { SuppliesController } from "../controllers/supplies.controller";
 
-import { AllInOneController } from "../controllers/all_in_one/allInOne.controller";
+// import { AllInOneController } from "../controllers/all_in_one/allInOne.controller";
+
 const router = Router();
 // const apiLogger = require("../middleware/apiLogger");
 // const {
@@ -12,6 +14,10 @@ const router = Router();
 // router.use(authenticateToken, apiLogger, authorizeRole(1));
 
 // router.get("/mapAll", AllChoiceController.mapAll);
-router.get("/all-in-one", AllInOneController.index);
+// router.get("/all-in-one", AllInOneController.index);
+router.post("/create-item", SuppliesController.createItem);
+router.get("/get-item", SuppliesController.index);
+router.get("/get-item/:id", SuppliesController.getItemByID);
+
 
 export default router;
