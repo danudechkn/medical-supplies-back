@@ -1,4 +1,4 @@
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import db from "../models/supplies/index";
 
 export class CreateItemService {
@@ -92,24 +92,71 @@ export class CreateItemService {
             })),
         };
     }
-    // static async updateItem(id: number, body: any) {
-    //     const item = await db.Item.update({
-    //         itemname: body.itemname,
-    //         active: body.active,
-    //         updated_by: body.updated_by,
-    //     }, { where: { id } });
-    //     const item_data = await db.ItemData.update({
-    //         coverage_group: body.coverage_group,
-    //         price: body.price,
-    //         reiburse: body.reiburse,
-    //         noreiburse: body.noreiburse,
-    //         stockcode: body.stockcode,
-    //         opd: body.opd || body.OPD,
-    //         ipd: body.ipd || body.IPD,
-    //         hm: body.hm || body.HM,
-    //     }, { where: { item_id: id } });
-    //     return { item, item_data };
-    // }
+    static async updateItem(id: number, body: any) {
+        // ใช้ Transaction เพื่อความปลอดภัยของข้อมูลทั้งสองตาราง
+        const result = await db.sequelize.transaction(async (t: any) => {
+            // 1. ตรวจสอบว่ามี Item นี้อยู่จริงหรือไม่
+            const existingItem = await db.Item.findByPk(id, { transaction: t });
+            if (!existingItem) {
+                throw new Error("Item not found");
+            }
+            // 2. อัปเดตตารางหลัก (Item)
+            await existingItem.update(
+                {
+                    itemname: body.itemname !== undefined
+                        ? body.itemname.trim()
+                        : existingItem.itemname,
+
+                    active: body.active !== undefined
+                        ? (body.active === true || String(body.active).toUpperCase() === "Y" ? "Y" : "N")
+                        : existingItem.active,
+
+                    updated_by: body.updated_by !== undefined
+                        ? body.updated_by
+                        : existingItem.updated_by,
+
+                    inv_code: body.inv_code !== undefined
+                        ? body.inv_code
+                        : (body.stockcode !== undefined ? body.stockcode : existingItem.inv_code),
+                },
+                { transaction: t }
+            );
+
+
+            // 3. จัดการข้อมูลในตาราง item_data (กรณีส่งมาเป็น Array)
+            const itemDataList = Array.isArray(body.item_data)
+                ? body.item_data
+                : (body.coverage_group || body.price !== undefined ? [body] : null);
+
+            if (itemDataList && itemDataList.length > 0) {
+                // วิธีที่นิยมและปลอดภัยที่สุดสำหรับ 1:N คือ ลบของเดิมภายใต้ item_id นี้แล้วสร้างใหม่
+                await db.ItemData.destroy({
+                    where: { item_id: id },
+                    transaction: t,
+                });
+
+                const dataToInsert = itemDataList.map((d: any) => ({
+                    item_id: id,
+                    coverage_group: d.coverage_group || null,
+                    price: Number(d.price) || 0,
+                    reimburse: Number(d.reimburse ?? d.reiburse ?? 0),
+                    noreimburse: Number(d.noreimburse ?? d.noreiburse ?? 0),
+                    stockcode: d.stockcode || null,
+                    opd: (d.opd || d.OPD || "N").toUpperCase(),
+                    ipd: (d.ipd || d.IPD || "N").toUpperCase(),
+                    hm: (d.hm || d.HM || "N").toUpperCase(),
+                }));
+
+                await db.ItemData.bulkCreate(dataToInsert, { transaction: t });
+            }
+
+            return true;
+        });
+
+        // 4. ดึงข้อมูลล่าสุดในรูปแบบมาตรฐานเดียวกันกับ getItemByID ส่งกลับไป
+        return await this.getItemByID(id);
+    }
+
     static async index(query: any) {
         const page = parseInt(query?.page) || 1;
         const limit = query?.limit ? parseInt(query.limit) : 10;
@@ -182,4 +229,5 @@ export class CreateItemService {
             },
         };
     }
+
 }
