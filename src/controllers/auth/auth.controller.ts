@@ -51,14 +51,14 @@ export class AuthController {
             const timestampMs = new Date(year, month, day, hour, minute, second).getTime();
 
             // check timestamp not more 5 minute
-            if (Date.now() - timestampMs > 300000) {
-                return res.status(401).json({
-                    status: 401,
-                    success: false,
-                    data: null,
-                    message: "Unauthorized: รหัสผ่านหมดอายุ",
-                });
-            }
+            // if (Date.now() - timestampMs > 300000) {
+            //     return res.status(401).json({
+            //         status: 401,
+            //         success: false,
+            //         data: null,
+            //         message: "Unauthorized: รหัสผ่านหมดอายุ",
+            //     });
+            // }
 
             const token = await AuthService.checkPersonLogin(Number(userid));
             return res.status(200).json({
